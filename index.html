@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SkylineX FarmOS — Viewer 👁️</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8FAFC; --surface:#FFFFFF; --surface-alt:#F1F5F9;
+  --ink:#0F172A; --ink-soft:#64748B;
+  --leaf:#2563EB; --leaf-light:#3B82F6; --leaf-lighter:#60A5FA; --leaf-pale:rgba(37,99,235,0.08);
+  --sky:#0EA5E9; --sky-pale:rgba(14,165,233,0.08);
+  --gold:#F59E0B; --gold-pale:rgba(245,158,11,0.10);
+  --danger:#DC2626; --danger-pale:rgba(220,38,38,0.08);
+  --success:#16A34A; --success-pale:rgba(22,163,74,0.08);
+  --border:rgba(15,23,42,0.09); --radius:14px;
+  --shadow:0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04);
+  --topbar-bg:linear-gradient(135deg,#1e3a5f 0%,#2563EB 60%,#1d4ed8 100%);
+  --topbar-text:#FFFFFF; --topbar-sub:rgba(255,255,255,0.75);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Inter','Cairo',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; font-size:14px;}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--topbar-bg); color:var(--topbar-text);
+  padding:12px 16px 10px; display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(0,0,0,0.15);
+}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.topbar h1{font-size:16px;font-weight:800;margin:0;letter-spacing:.3px;}
+.topbar .sub{font-size:10.5px;color:var(--topbar-sub);margin-top:1px;letter-spacing:.6px;}
+.viewer-badge{background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px;}
+
+/* ── IMPORT SCREEN ── */
+#importScreen{
+  max-width:520px; margin:60px auto; padding:24px 16px; text-align:center;
+}
+.import-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:20px;
+  padding:36px 28px; box-shadow:var(--shadow);
+}
+.import-icon{font-size:52px; margin-bottom:16px;}
+.import-card h2{font-size:20px;font-weight:800;color:var(--leaf);margin-bottom:8px;}
+.import-card p{font-size:13px;color:var(--ink-soft);line-height:1.6;margin-bottom:24px;}
+.import-drop-zone{
+  border:2.5px dashed var(--leaf-lighter); border-radius:14px;
+  padding:32px 20px; cursor:pointer; transition:all .2s;
+  background:var(--leaf-pale);
+}
+.import-drop-zone:hover,.import-drop-zone.drag-over{background:rgba(37,99,235,0.13);border-color:var(--leaf);}
+.import-drop-zone .dz-icon{font-size:32px;margin-bottom:8px;}
+.import-drop-zone p{font-size:12px;color:var(--ink-soft);margin:0;}
+.import-drop-zone strong{color:var(--leaf);}
+#fileInput{display:none;}
+.btn-import{
+  margin-top:16px; background:var(--leaf); color:#fff;
+  border:none; border-radius:10px; padding:11px 28px;
+  font-size:14px; font-weight:700; cursor:pointer; width:100%;
+  transition:opacity .18s;
+}
+.btn-import:hover{opacity:.88;}
+.lang-row{display:flex;gap:8px;justify-content:center;margin-bottom:20px;}
+.lang-pill{padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);cursor:pointer;background:var(--surface);color:var(--ink-soft);transition:all .18s;}
+.lang-pill.active{background:var(--leaf);color:#fff;border-color:var(--leaf);}
+
+/* ── NAVIGATION ── */
+#mainApp{display:none;}
+nav{
+  background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; overflow-x:auto; padding:0 8px; gap:2px; position:sticky; top:54px; z-index:90;
+  scrollbar-width:none;
+}
+nav::-webkit-scrollbar{display:none;}
+.navbtn{
+  flex-shrink:0; border:none; background:transparent; color:var(--ink-soft);
+  font-size:11.5px; font-weight:600; padding:10px 13px; cursor:pointer;
+  border-bottom:2.5px solid transparent; transition:all .18s; white-space:nowrap;
+}
+.navbtn.active{color:var(--leaf);border-bottom-color:var(--leaf);}
+.navbtn:hover:not(.active){background:var(--leaf-pale);color:var(--leaf);}
+
+/* ── VIEWS ── */
+.view{display:none; padding:16px; max-width:900px; margin:0 auto;}
+.view.active{display:block;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
+.card h2{font-size:14px;font-weight:800;color:var(--leaf);margin:0 0 12px;display:flex;align-items:center;gap:7px;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px;}
+@media(min-width:500px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+.kpi-card{background:var(--surface-alt);border:1px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center;}
+.kpi-val{font-size:22px;font-weight:800;color:var(--leaf);}
+.kpi-lbl{font-size:10.5px;color:var(--ink-soft);margin-top:3px;font-weight:500;}
+.kpi-sub{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.kpi-bar{height:5px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden;}
+.kpi-bar-fill{height:100%;background:var(--leaf);border-radius:3px;transition:width .6s;}
+
+/* ── STATION GRID ── */
+.lines-wrap{display:flex;flex-direction:column;gap:10px;}
+.line-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.line-header{background:var(--leaf-pale);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.line-header-left{font-weight:800;color:var(--leaf);font-size:14px;}
+.line-header-right{font-size:11px;color:var(--ink-soft);}
+.stations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:10px;}
+.st-card{border:1.5px solid var(--border);border-radius:10px;padding:8px;text-align:center;background:var(--surface-alt);}
+.st-code{font-size:11.5px;font-weight:800;color:var(--ink);margin-bottom:5px;}
+.pit{font-size:10px;padding:3px 6px;border-radius:6px;margin:2px 0;font-weight:600;}
+.pit.flowered{background:#DCFCE7;color:#15803D;}
+.pit.notyet{background:var(--surface-alt);color:var(--ink-soft);}
+.pit.harvested{background:#FEF3C7;color:#92400E;}
+.days-badge{font-size:9px;opacity:.8;}
+
+/* ── FLOWERING LOG ── */
+.fl-list{display:flex;flex-direction:column;gap:8px;}
+.fl-item{background:var(--surface-alt);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;}
+.fl-left .fl-code{font-weight:800;font-size:14px;font-family:'Cairo',sans-serif;}
+.fl-left .fl-date{font-size:11px;color:var(--ink-soft);}
+.fl-right{text-align:right;}
+.fl-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:700;}
+.fl-badge.flowered{background:#DCFCE7;color:#15803D;}
+.fl-badge.harvested{background:#FEF3C7;color:#92400E;}
+.days-chip{font-size:11px;font-weight:600;color:var(--ink-soft);}
+.days-chip.urgent{color:var(--danger);}
+.days-chip.soon{color:var(--gold);}
+
+/* ── HARVEST LOG ── */
+.hv-list{display:flex;flex-direction:column;gap:8px;}
+.hv-item{background:var(--surface-alt);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.hv-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.hv-code{font-weight:800;font-size:13px;font-family:'Cairo',sans-serif;}
+.hv-date{font-size:11px;color:var(--ink-soft);}
+.hv-details{display:flex;gap:10px;flex-wrap:wrap;}
+.hv-chip{font-size:11px;background:var(--leaf-pale);color:var(--leaf);padding:2px 8px;border-radius:6px;font-weight:600;}
+.hv-chip.money{background:var(--gold-pale);color:#92400E;}
+
+/* ── SUMMARY TABLE ── */
+table.summary{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.summary th{background:var(--leaf-pale);color:var(--leaf);font-weight:700;padding:7px 10px;text-align:start;}
+table.summary td{padding:7px 10px;border-bottom:1px solid var(--border);}
+table.summary tr:last-child td{border:none;}
+table.summary .num{font-weight:700;font-family:'Cairo',sans-serif;}
+
+/* ── EXPENSES / OPERATIONS ── */
+.log-list{display:flex;flex-direction:column;gap:7px;}
+.log-item{background:var(--surface-alt);border:1px solid var(--border);border-radius:9px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;}
+.log-desc{font-weight:600;font-size:13px;}
+.log-meta{font-size:10.5px;color:var(--ink-soft);}
+.log-amount{font-weight:800;font-size:14px;}
+.log-amount.income{color:var(--success);}
+.log-amount.expense{color:var(--danger);}
+
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;}
+.search-bar input{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;outline:none;background:var(--surface);}
+.search-bar input:focus{border-color:var(--leaf);}
+.search-bar select{border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:12.5px;background:var(--surface);outline:none;cursor:pointer;}
+
+/* ── HEATMAP ── */
+.heatmap-grid{display:grid;gap:3px;margin-top:10px;}
+.hm-cell{aspect-ratio:1;border-radius:4px;cursor:default;position:relative;}
+.hm-cell[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;font-size:10px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:99;pointer-events:none;}
+.hm-legend{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+.hm-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);}
+.hm-dot{width:12px;height:12px;border-radius:3px;}
+
+/* ── BUYERS ── */
+.buyer-item{background:var(--surface-alt);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px;}
+.buyer-name{font-weight:800;font-size:14px;}
+.buyer-stats{display:flex;gap:10px;margin-top:5px;flex-wrap:wrap;}
+.buyer-stat{font-size:11.5px;color:var(--ink-soft);}
+.buyer-stat span{color:var(--ink);font-weight:700;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:25px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* ── EXPORT STAMP ── */
+.viewer-stamp{
+  background:rgba(37,99,235,0.07);border:1px solid rgba(37,99,235,0.15);
+  border-radius:10px;padding:8px 14px;font-size:11.5px;color:var(--ink-soft);
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.viewer-stamp strong{color:var(--leaf);}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:32px 16px;color:var(--ink-soft);}
+.empty-state .ei{font-size:36px;margin-bottom:8px;}
+.empty-state p{font-size:13px;}
+
+/* ── FORECAST ── */
+.fc-list{display:flex;flex-direction:column;gap:8px;}
+.fc-item{border-radius:10px;padding:10px 12px;border:1.5px solid;}
+.fc-item.overdue{background:rgba(220,38,38,0.06);border-color:rgba(220,38,38,0.25);}
+.fc-item.soon{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.25);}
+.fc-item.coming{background:var(--leaf-pale);border-color:rgba(37,99,235,0.2);}
+.fc-top{display:flex;justify-content:space-between;align-items:center;}
+.fc-code{font-weight:800;font-size:14px;font-family:'Cairo',sans-serif;}
+.fc-days{font-size:12px;font-weight:700;}
+.fc-days.overdue{color:var(--danger);}
+.fc-days.soon{color:var(--gold);}
+.fc-days.coming{color:var(--leaf);}
+.fc-date{font-size:11px;color:var(--ink-soft);}
+
+/* ── RTL ── */
+[dir="rtl"]{font-family:'Cairo','Inter',sans-serif;}
+
+/* ── PROGRESS ── */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.prog-label{font-size:12px;color:var(--ink-soft);min-width:80px;}
+.prog-bar{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;background:var(--leaf);}
+.prog-pct{font-size:11.5px;font-weight:700;color:var(--ink-soft);min-width:38px;text-align:end;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div>
+      <h1 id="topTitle">🌿 SkylineX FarmOS</h1>
+      <div class="sub" id="topSub">READ-ONLY VIEWER</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="viewer-badge" id="viewerBadge">👁️ VIEW ONLY</span>
+    <div style="display:flex;gap:4px;">
+      <button class="lang-pill" id="btnAr" onclick="setLang('ar')" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;padding:3px 8px;cursor:pointer;">ع</button>
+      <button class="lang-pill" id="btnEn" onclick="setLang('en')" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:3px 8px;cursor:pointer;">EN</button>
+      <button class="lang-pill" id="btnRw" onclick="setLang('rw')" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;padding:3px 8px;cursor:pointer;">RW</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT SCREEN -->
+<div id="importScreen">
+  <div class="import-card">
+    <div class="import-icon">📂</div>
+    <h2 id="importTitle">Restore & View Backup</h2>
+    <p id="importDesc">This is a read-only viewer. Load a SkylineX FarmOS backup file (.json) to view your farm data — no data will be modified.</p>
+    <div class="import-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="ev.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+      <div class="dz-icon">📄</div>
+      <p><strong id="dzStrong">Click to select</strong> <span id="dzOr">or drag & drop</span></p>
+      <p style="margin-top:4px;font-size:11px;" id="dzHint">SkylineX backup .json file</p>
+    </div>
+    <input type="file" id="fileInput" accept="application/json,.json" onchange="loadFile(this.files[0])">
+    <button class="btn-import" onclick="document.getElementById('fileInput').click()" id="btnChoose">📂 Choose Backup File</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp">
+  <nav id="mainNav">
+    <button class="navbtn active" data-view="dashboard" onclick="switchTab('dashboard')" id="nav-dashboard">📊 Dashboard</button>
+    <button class="navbtn" data-view="lines" onclick="switchTab('lines')" id="nav-lines">🌿 Lines</button>
+    <button class="navbtn" data-view="flowering" onclick="switchTab('flowering')" id="nav-flowering">🌸 Flowering</button>
+    <button class="navbtn" data-view="harvest" onclick="switchTab('harvest')" id="nav-harvest">🍌 Harvest</button>
+    <button class="navbtn" data-view="expenses" onclick="switchTab('expenses')" id="nav-expenses">📉 Expenses</button>
+    <button class="navbtn" data-view="operations" onclick="switchTab('operations')" id="nav-operations">🔧 Operations</button>
+    <button class="navbtn" data-view="buyers" onclick="switchTab('buyers')" id="nav-buyers">👥 Buyers</button>
+    <button class="navbtn" data-view="forecast" onclick="switchTab('forecast')" id="nav-forecast">📅 Forecast</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="viewer-stamp" id="dashStamp">
+      <span>👁️</span>
+      <span id="stampText">Read-only view — <strong id="stampFile">—</strong> · Exported: <strong id="stampDate">—</strong></span>
+    </div>
+    <div class="card">
+      <h2 id="dashKpiTitle">📊 Farm Overview</h2>
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </div>
+    <div class="card">
+      <h2 id="dashHarvestTitle">🍌 Harvest Summary</h2>
+      <div class="kpi-grid" id="harvestKpiGrid"></div>
+    </div>
+    <div class="card">
+      <h2 id="dashFinTitle">💰 Financial Overview</h2>
+      <div class="kpi-grid" id="finKpiGrid"></div>
+    </div>
+    <div class="card" id="topLinesCard">
+      <h2 id="topLinesTitle">📋 Production per Line</h2>
+      <table class="summary" id="perLineTable"><thead><tr><th id="thLine">Line</th><th id="thKg">Harvest (kg)</th><th id="thRevenue">Revenue</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card" id="genKpiCard" style="display:none;">
+      <h2 id="genKpiTitle">🧬 Multi-Gen Stats</h2>
+      <div id="genKpiGrid" class="kpi-grid"></div>
+    </div>
+  </div>
+
+  <!-- LINES -->
+  <div class="view" id="view-lines">
+    <div class="card">
+      <h2 id="linesTitle">🌿 Lines & Stations</h2>
+      <div class="search-bar">
+        <input type="text" id="stSearch" placeholder="Search station code..." oninput="renderLinesView()">
+        <select id="lineFilter" onchange="renderLinesView()"><option value="">All lines</option></select>
+      </div>
+    </div>
+    <div id="linesWrap" class="lines-wrap"></div>
+  </div>
+
+  <!-- FLOWERING -->
+  <div class="view" id="view-flowering">
+    <div class="card">
+      <h2 id="flTitle">🌸 Flowering Log</h2>
+      <div class="search-bar">
+        <input type="text" id="flSearch" placeholder="Search station..." oninput="renderFloweringView()">
+        <select id="flStatus" onchange="renderFloweringView()">
+          <option value="">All statuses</option>
+          <option value="أزهرت">Flowered</option>
+          <option value="حُصدت">Harvested</option>
+          <option value="لم تُزهر">Not yet</option>
+        </select>
+      </div>
+    </div>
+    <div class="fl-list" id="flList"></div>
+  </div>
+
+  <!-- HARVEST -->
+  <div class="view" id="view-harvest">
+    <div class="card">
+      <h2 id="hvTitle">🍌 Harvest Log</h2>
+      <div class="search-bar">
+        <input type="text" id="hvSearch" placeholder="Search..." oninput="renderHarvestView()">
+        <select id="hvLine" onchange="renderHarvestView()"><option value="">All lines</option></select>
+      </div>
+    </div>
+    <div class="hv-list" id="hvList"></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="view" id="view-expenses">
+    <div class="card">
+      <h2 id="expTitle">📉 Expenses</h2>
+      <div class="kpi-grid" id="expKpiGrid"></div>
+    </div>
+    <div class="log-list" id="expList"></div>
+  </div>
+
+  <!-- OPERATIONS -->
+  <div class="view" id="view-operations">
+    <div class="card">
+      <h2 id="opsTitle">🔧 Operations Log</h2>
+      <div class="search-bar">
+        <input type="text" id="opsSearch" placeholder="Search..." oninput="renderOpsView()">
+      </div>
+    </div>
+    <div class="log-list" id="opsList"></div>
+  </div>
+
+  <!-- BUYERS -->
+  <div class="view" id="view-buyers">
+    <div class="card">
+      <h2 id="buyersTitle">👥 Buyers Registry</h2>
+      <div class="search-bar">
+        <input type="text" id="buySearch" placeholder="Search buyer..." oninput="renderBuyersView()">
+      </div>
+    </div>
+    <div id="buyersList"></div>
+  </div>
+
+  <!-- FORECAST -->
+  <div class="view" id="view-forecast">
+    <div class="card">
+      <h2 id="forecastTitle">📅 Harvest Forecast</h2>
+      <p style="font-size:12px;color:var(--ink-soft);" id="forecastDesc">Stations with flowering dates, expected harvest in ~120 days.</p>
+    </div>
+    <div class="fc-list" id="fcList"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   SkylineX FarmOS — READ-ONLY VIEWER
+   Loads a .json backup and renders all data for inspection.
+   No writes, no saves, no mutations.
+================================================================ */
+
+let state = { lines:[], stations:[], flowering:[], harvest:[], harvestHistory:[], operations:[], expenses:[], invoices:[], buyers:[], farmProfile:{} };
+let currentLang = 'en';
+let _stationIndex = new Map();
+
+const I18N = {
+  ar:{
+    importTitle:'استعادة وعرض البيانات',
+    importDesc:'هذا عارض للقراءة فقط. قم بتحميل ملف النسخ الاحتياطي (.json) لعرض بيانات مزرعتك — لن يتم تعديل أي بيانات.',
+    dzStrong:'انقر لاختيار الملف',
+    dzOr:'أو اسحب وأفلت',
+    dzHint:'ملف النسخ الاحتياطي .json',
+    btnChoose:'📂 اختر ملف النسخ الاحتياطي',
+    viewerBadge:'👁️ عرض فقط',
+    topSub:'عارض للقراءة فقط',
+    navDashboard:'📊 لوحة التحكم',
+    navLines:'🌿 الخطوط',
+    navFlowering:'🌸 التزهير',
+    navHarvest:'🍌 الحصاد',
+    navExpenses:'📉 المصروفات',
+    navOperations:'🔧 العمليات',
+    navBuyers:'👥 المشترون',
+    navForecast:'📅 التوقعات',
+    dashKpiTitle:'📊 نظرة عامة على المزرعة',
+    dashHarvestTitle:'🍌 ملخص الحصاد',
+    dashFinTitle:'💰 النظرة المالية',
+    topLinesTitle:'📋 الإنتاج حسب الخط',
+    genKpiTitle:'🧬 إحصائيات الأجيال',
+    linesTitle:'🌿 الخطوط والمحطات',
+    flTitle:'🌸 سجل التزهير',
+    hvTitle:'🍌 سجل الحصاد',
+    expTitle:'📉 المصروفات',
+    opsTitle:'🔧 سجل العمليات',
+    buyersTitle:'👥 سجل المشترين',
+    forecastTitle:'📅 توقعات الحصاد',
+    forecastDesc:'المحطات التي لديها تواريخ تزهير، موعد الحصاد المتوقع ~120 يوم.',
+    stampText:'عرض للقراءة فقط — ',
+    stampExported:' · تاريخ التصدير: ',
+    kpiFlowered:'أزهرت',kpiHarvested:'حُصدت',kpiNotYet:'لم تُزهر',kpiTotal:'إجمالي الحفر',
+    kpiDailyKg:'حصاد اليوم (kg)',kpiMonthlyKg:'حصاد الشهر (kg)',kpiTotalKg:'إجمالي الحصاد (kg)',kpiAvgWeight:'متوسط الوزن (kg)',
+    kpiRevenue:'إجمالي الإيرادات',kpiExpenses:'إجمالي المصروفات',kpiNetProfit:'صافي الربح',kpiAvgPrice:'متوسط السعر/kg',
+    thLine:'الخط',thKg:'حصاد (kg)',thRevenue:'الإيرادات',
+    flowered:'أزهرت',notyet:'لم تُزهر',harvested:'حُصدت',
+    daysLeft:'يوم متبقي',overdue:'متأخر',daysAgo:'أيام منذ التزهير',
+    searchStation:'بحث عن محطة...',
+    filterAllLines:'كل الخطوط',
+    allStatuses:'كل الحالات',
+    stationLabel:'محطة',
+    buyerPurchases:'عمليات شراء',buyerTotal:'إجمالي',buyerPaid:'مدفوع',buyerBalance:'المتبقي',
+    noData:'لا توجد بيانات للعرض',
+    expCatLabel:'الفئة',expDateLabel:'التاريخ',expDescLabel:'الوصف',
+    totalExpenses:'إجمالي المصروفات',avgExpense:'متوسط المصروف',expCount:'عدد المصروفات',
+    opsType:'نوع العملية',opsLine:'الخط',opsWorker:'العامل',opsDate:'التاريخ',
+    forecastOverdue:'متأخر',forecastSoon:'قريبًا',forecastComing:'قادم',
+    forecastExpected:'موعد الحصاد المتوقع',forecastFlowered:'تزهر في',
+    lineStations:'محطات',
+    genPlants:'نبات',genFlowered:'أزهر',
+  },
+  en:{
+    importTitle:'Restore & View Backup',
+    importDesc:'This is a read-only viewer. Load a SkylineX FarmOS backup file (.json) to view your farm data — no data will be modified.',
+    dzStrong:'Click to select',dzOr:'or drag & drop',dzHint:'SkylineX backup .json file',
+    btnChoose:'📂 Choose Backup File',viewerBadge:'👁️ VIEW ONLY',topSub:'READ-ONLY VIEWER',
+    navDashboard:'📊 Dashboard',navLines:'🌿 Lines',navFlowering:'🌸 Flowering',navHarvest:'🍌 Harvest',
+    navExpenses:'📉 Expenses',navOperations:'🔧 Operations',navBuyers:'👥 Buyers',navForecast:'📅 Forecast',
+    dashKpiTitle:'📊 Farm Overview',dashHarvestTitle:'🍌 Harvest Summary',dashFinTitle:'💰 Financial Overview',
+    topLinesTitle:'📋 Production per Line',genKpiTitle:'🧬 Multi-Gen Stats',
+    linesTitle:'🌿 Lines & Stations',flTitle:'🌸 Flowering Log',hvTitle:'🍌 Harvest Log',
+    expTitle:'📉 Expenses',opsTitle:'🔧 Operations Log',buyersTitle:'👥 Buyers Registry',
+    forecastTitle:'📅 Harvest Forecast',forecastDesc:'Stations with flowering dates, expected harvest in ~120 days.',
+    stampText:'Read-only view — ',stampExported:' · Exported: ',
+    kpiFlowered:'Flowered',kpiHarvested:'Harvested',kpiNotYet:'Not Yet',kpiTotal:'Total Pits',
+    kpiDailyKg:"Today's Harvest (kg)",kpiMonthlyKg:'Monthly Harvest (kg)',kpiTotalKg:'Total Harvest (kg)',kpiAvgWeight:'Avg Weight (kg)',
+    kpiRevenue:'Total Revenue',kpiExpenses:'Total Expenses',kpiNetProfit:'Net Profit',kpiAvgPrice:'Avg Price/kg',
+    thLine:'Line',thKg:'Harvest (kg)',thRevenue:'Revenue',
+    flowered:'Flowered',notyet:'Not yet',harvested:'Harvested',
+    daysLeft:'days left',overdue:'OVERDUE',daysAgo:'days since flowering',
+    searchStation:'Search station...',filterAllLines:'All lines',allStatuses:'All statuses',
+    stationLabel:'Station',
+    buyerPurchases:'Purchases',buyerTotal:'Total',buyerPaid:'Paid',buyerBalance:'Balance',
+    noData:'No data to display',
+    expCatLabel:'Category',expDateLabel:'Date',expDescLabel:'Description',
+    totalExpenses:'Total Expenses',avgExpense:'Avg Expense',expCount:'Total Count',
+    opsType:'Type',opsLine:'Line',opsWorker:'Worker',opsDate:'Date',
+    forecastOverdue:'Overdue',forecastSoon:'Coming soon',forecastComing:'Upcoming',
+    forecastExpected:'Expected harvest',forecastFlowered:'Flowered on',
+    lineStations:'stations',genPlants:'plants',genFlowered:'flowered',
+  },
+  rw:{
+    importTitle:'Subiza no Kureba Backup',
+    importDesc:'Iyi ni gahunda yo gusoma gusa. Shyiramo dosiye ya backup (.json) kugira ngo ubone amakuru y\'ubworozi wawe — nta makuru azahinduwe.',
+    dzStrong:'Kanda ushyireho',dzOr:'cyangwa kururura',dzHint:'Dosiye ya backup .json',
+    btnChoose:'📂 Hitamo Dosiye ya Backup',viewerBadge:'👁️ GUSOMA GUSA',topSub:'GUSOMA GUSA',
+    navDashboard:'📊 Ikibaho',navLines:'🌿 Imirongo',navFlowering:'🌸 Amaturuka',navHarvest:'🍌 Isarura',
+    navExpenses:'📉 Amafaranga',navOperations:'🔧 Ibikorwa',navBuyers:'👥 Abakiriya',navForecast:'📅 Ibiganiro',
+    dashKpiTitle:'📊 Incamake y\'Ubworozi',dashHarvestTitle:'🍌 Incamake y\'Isarura',dashFinTitle:'💰 Incamake y\'Imari',
+    topLinesTitle:'📋 Umusaruro ku Murongo',genKpiTitle:'🧬 Imibare y\'Inzika',
+    linesTitle:'🌿 Imirongo & Sitasiyo',flTitle:'🌸 Inyandiko y\'Amaturuka',hvTitle:'🍌 Inyandiko y\'Isarura',
+    expTitle:'📉 Amafaranga Yakoreshejwe',opsTitle:'🔧 Inyandiko y\'Ibikorwa',buyersTitle:'👥 Inyandiko y\'Abakiriya',
+    forecastTitle:'📅 Iteganyabikorwa ry\'Isarura',forecastDesc:'Sitasiyo zifite amatariki y\'amaturuka, isarura riteganyijwe mu ~120 iminsi.',
+    stampText:'Gusoma gusa — ',stampExported:' · Yoherejwe: ',
+    kpiFlowered:'Byamaze amaturuka',kpiHarvested:'Byasaruwe',kpiNotYet:'Ntibiraza',kpiTotal:'Ibyobo byose',
+    kpiDailyKg:'Isarura ry\'uyu munsi (kg)',kpiMonthlyKg:'Isarura ry\'ukwezi (kg)',kpiTotalKg:'Isarura ryose (kg)',kpiAvgWeight:'Ibiro by\'hagati (kg)',
+    kpiRevenue:'Amaturuka yose',kpiExpenses:'Amafaranga yose',kpiNetProfit:'Inyungu',kpiAvgPrice:'Igiciro cy\'hagati/kg',
+    thLine:'Umurongo',thKg:'Isarura (kg)',thRevenue:'Amaturuka',
+    flowered:'Bamaze amaturuka',notyet:'Ntibaraza',harvested:'Basaruwe',
+    daysLeft:'iminsi isigaye',overdue:'BIRASHIZE',daysAgo:'iminsi nyuma y\'amaturuka',
+    searchStation:'Shakisha sitasiyo...',filterAllLines:'Imirongo yose',allStatuses:'Indangagaciro zose',
+    stationLabel:'Sitasiyo',
+    buyerPurchases:'Kugura',buyerTotal:'Byose',buyerPaid:'Byishyuwe',buyerBalance:'Insigaye',
+    noData:'Nta makuru agaragara',
+    expCatLabel:'Icyiciro',expDateLabel:'Itariki',expDescLabel:'Ibisobanuro',
+    totalExpenses:'Amafaranga yose',avgExpense:'Hagati ya',expCount:'Umubare',
+    opsType:'Ubwoko',opsLine:'Umurongo',opsWorker:'Umukozi',opsDate:'Itariki',
+    forecastOverdue:'Birashize',forecastSoon:'Bishije vuba',forecastComing:'Bizaza',
+    forecastExpected:'Isarura riteganyijwe',forecastFlowered:'Amaturuka:',
+    lineStations:'sitasiyo',genPlants:'imyaka',genFlowered:'amaturuka',
+  }
+};
+
+function tr(key){ return (I18N[currentLang]||I18N.en)[key] || (I18N.en)[key] || key; }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtNum(n){ return Number(n||0).toLocaleString('en-US'); }
+function fmtRwf(n){ return fmtNum(Math.round(n||0))+' RWF'; }
+function showToast(msg, ms=2500){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), ms);
+}
+
+/* ── LANGUAGE ── */
+function setLang(lang){
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang==='ar' ? 'rtl' : 'ltr';
+  applyLangLabels();
+  renderAll();
+}
+
+function applyLangLabels(){
+  const keys = ['importTitle','importDesc','dzStrong','dzOr','dzHint','btnChoose','viewerBadge','topSub',
+    'navDashboard','navLines','navFlowering','navHarvest','navExpenses','navOperations','navBuyers','navForecast',
+    'dashKpiTitle','dashHarvestTitle','dashFinTitle','topLinesTitle','genKpiTitle',
+    'linesTitle','flTitle','hvTitle','expTitle','opsTitle','buyersTitle','forecastTitle','forecastDesc'];
+  const idMap = {
+    importTitle:'importTitle',importDesc:'importDesc',dzStrong:'dzStrong',dzOr:'dzOr',dzHint:'dzHint',
+    btnChoose:'btnChoose',viewerBadge:'viewerBadge',topSub:'topSub',
+    navDashboard:'nav-dashboard',navLines:'nav-lines',navFlowering:'nav-flowering',navHarvest:'nav-harvest',
+    navExpenses:'nav-expenses',navOperations:'nav-operations',navBuyers:'nav-buyers',navForecast:'nav-forecast',
+    dashKpiTitle:'dashKpiTitle',dashHarvestTitle:'dashHarvestTitle',dashFinTitle:'dashFinTitle',
+    topLinesTitle:'topLinesTitle',genKpiTitle:'genKpiTitle',
+    linesTitle:'linesTitle',flTitle:'flTitle',hvTitle:'hvTitle',expTitle:'expTitle',
+    opsTitle:'opsTitle',buyersTitle:'buyersTitle',forecastTitle:'forecastTitle',forecastDesc:'forecastDesc',
+  };
+  Object.entries(idMap).forEach(([key,id])=>{
+    const el=document.getElementById(id); if(el) el.textContent=tr(key);
+  });
+  // table headers
+  const thLine=document.getElementById('thLine'); if(thLine) thLine.textContent=tr('thLine');
+  const thKg=document.getElementById('thKg'); if(thKg) thKg.textContent=tr('thKg');
+  const thRevenue=document.getElementById('thRevenue'); if(thRevenue) thRevenue.textContent=tr('thRevenue');
+  // search placeholders
+  const ss=document.getElementById('stSearch'); if(ss) ss.placeholder=tr('searchStation');
+  const flSearch=document.getElementById('flSearch'); if(flSearch) flSearch.placeholder=tr('searchStation');
+  const hvSearch=document.getElementById('hvSearch'); if(hvSearch) hvSearch.placeholder=tr('searchStation');
+  // line filter options
+  ['lineFilter','hvLine'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(sel && sel.options[0]) sel.options[0].textContent=tr('filterAllLines');
+  });
+  const flSt=document.getElementById('flStatus');
+  if(flSt && flSt.options[0]) flSt.options[0].textContent=tr('allStatuses');
+}
+
+/* ── NAVIGATION ── */
+function switchTab(view){
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+view));
+  if(view==='lines') renderLinesView();
+  else if(view==='flowering') renderFloweringView();
+  else if(view==='harvest') renderHarvestView();
+  else if(view==='expenses') renderExpView();
+  else if(view==='operations') renderOpsView();
+  else if(view==='buyers') renderBuyersView();
+  else if(view==='forecast') renderForecastView();
+}
+
+/* ── FILE LOADING ── */
+function handleDrop(ev){
+  ev.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = ev.dataTransfer.files[0];
+  if(file) loadFile(file);
+}
+
+async function loadFile(file){
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data || !Array.isArray(data.lines)) throw new Error('Invalid format');
+    // populate state
+    state.lines = data.lines || [];
+    state.stations = (data.stations||[]).map(normSt);
+    state.flowering = data.flowering || [];
+    state.harvest = data.harvest || [];
+    state.harvestHistory = data.harvestHistory || [];
+    state.operations = data.operations || [];
+    state.expenses = data.expenses || [];
+    state.invoices = data.invoices || [];
+    state.buyers = data.buyers || [];
+    state.farmProfile = data.farmProfile || {};
+    // set stamp
+    const stamped = data.exportedAt ? new Date(data.exportedAt).toLocaleString() : '—';
+    const farmName = (state.farmProfile && state.farmProfile.name) ? state.farmProfile.name : (data.farm||'SkylineX');
+    document.getElementById('stampFile').textContent = farmName;
+    document.getElementById('stampDate').textContent = stamped;
+    document.getElementById('topTitle').textContent = '🌿 '+farmName;
+    // populate selects
+    populateSelects();
+    // show app
+    document.getElementById('importScreen').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    renderAll();
+    showToast('✅ Backup loaded — '+tr('viewerBadge'));
+  }catch(e){
+    showToast('❌ Invalid or unreadable backup file');
+  }
+  document.getElementById('fileInput').value='';
+}
+
+function normSt(st){
+  if(st.harvestDate !== undefined && !st.harvestDateA && !st.harvestDateB){
+    st.harvestDateA = st.harvestDate||''; st.harvestDateB=''; delete st.harvestDate;
+  }
+  if(!st.harvestDateA) st.harvestDateA='';
+  if(!st.harvestDateB) st.harvestDateB='';
+  return st;
+}
+
+function populateSelects(){
+  // Line filter options
+  const lineNums = state.lines.map(l=>l.number).sort((a,b)=>a-b);
+  ['lineFilter','hvLine'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    while(sel.options.length>1) sel.remove(1);
+    lineNums.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent='L'+n; sel.appendChild(o); });
+  });
+}
+
+/* ── STATION INDEX ── */
+function getStationGens(st, side){
+  if(side==='A' && Array.isArray(st.gensA) && st.gensA.length) return st.gensA;
+  if(side==='B' && Array.isArray(st.gensB) && st.gensB.length) return st.gensB;
+  // legacy fallback
+  if(side==='A'){
+    const fd = st.floweringDateA||st.floweringDate||'';
+    return [{ count: st.plantsA||st.plants||1, floweringDate: fd, type:'شتلة' }];
+  }
+  if(side==='B'){
+    const fd = st.floweringDateB||st.floweringDate2||'';
+    return [{ count: st.plantsB||1, floweringDate: fd, type:'شتلة' }];
+  }
+  return [];
+}
+
+/* ── COMPUTE DASHBOARD DATA ── */
+function computeDash(){
+  const today = todayISO();
+  const todayMs = new Date(today).getTime();
+  let total=0, flowered=0, harvested=0, notYet=0;
+  state.stations.forEach(st=>{
+    ['A','B'].forEach(side=>{
+      total++;
+      const status = side==='A' ? (st.statusA||st.status||'لم تُزهر') : (st.statusB||'لم تُزهر');
+      if(status==='حُصدت') harvested++;
+      else if(status==='أزهرت') flowered++;
+      else notYet++;
+    });
+  });
+  // harvest stats
+  let dailyKg=0, monthlyKg=0, totalKg=0, totalRevenue=0;
+  const thisMonth = today.slice(0,7);
+  const perLine = {};
+  const perLineName = {};
+  state.harvest.forEach(r=>{
+    const w=Number(r.weight||0), p=Number(r.price||0);
+    totalKg+=w; totalRevenue+=w*p;
+    if(r.date===today) dailyKg+=w;
+    if(r.date && r.date.slice(0,7)===thisMonth) monthlyKg+=w;
+    perLine[r.line]=(perLine[r.line]||0)+w;
+    perLineName[r.line]=(perLineName[r.line]||0)+(w*p);
+  });
+  const avgWeight = state.harvest.length ? totalKg/state.harvest.length : 0;
+  const avgPrice = totalKg > 0 ? totalRevenue/totalKg : 0;
+  // expenses
+  const totalExp = state.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const netProfit = totalRevenue - totalExp;
+  return { total, flowered, harvested, notYet, dailyKg, monthlyKg, totalKg, avgWeight, totalRevenue, totalExp, netProfit, avgPrice, perLine, perLineName };
+}
+
+/* ── RENDER ALL ── */
+function renderAll(){
+  applyLangLabels();
+  renderDashboardView();
+}
+
+/* ── DASHBOARD ── */
+function renderDashboardView(){
+  const d = computeDash();
+  const mkKpi = (val, lbl, sub, color) => `
+    <div class="kpi-card">
+      <div class="kpi-val" style="color:${color||'var(--leaf)'};">${val}</div>
+      <div class="kpi-lbl">${lbl}</div>
+      ${sub?`<div class="kpi-sub">${sub}</div>`:''}
+    </div>`;
+  const denom = d.total||1;
+  const pctFl = Math.min(100,(d.flowered/denom)*100);
+  const pctHv = Math.min(100,(d.harvested/denom)*100);
+
+  document.getElementById('kpiGrid').innerHTML =
+    mkKpi(fmtNum(d.flowered), tr('kpiFlowered'), pctFl.toFixed(1)+'%', '#16A34A') +
+    mkKpi(fmtNum(d.harvested), tr('kpiHarvested'), pctHv.toFixed(1)+'%', '#92400E') +
+    mkKpi(fmtNum(d.notYet), tr('kpiNotYet'), '', 'var(--ink-soft)') +
+    mkKpi(fmtNum(d.total), tr('kpiTotal'), '', 'var(--leaf)');
+
+  document.getElementById('harvestKpiGrid').innerHTML =
+    mkKpi(fmtNum(d.dailyKg.toFixed(1)), tr('kpiDailyKg'),'','var(--leaf)') +
+    mkKpi(fmtNum(d.monthlyKg.toFixed(1)), tr('kpiMonthlyKg'),'','var(--leaf)') +
+    mkKpi(fmtNum(d.totalKg.toFixed(1)), tr('kpiTotalKg'),'','#1565C0') +
+    mkKpi(d.avgWeight.toFixed(1), tr('kpiAvgWeight'),'','var(--ink-soft)');
+
+  document.getElementById('finKpiGrid').innerHTML =
+    mkKpi(fmtRwf(d.totalRevenue), tr('kpiRevenue'),'','#16A34A') +
+    mkKpi(fmtRwf(d.totalExp), tr('kpiExpenses'),'','#DC2626') +
+    mkKpi(fmtRwf(d.netProfit), tr('kpiNetProfit'),'',d.netProfit>=0?'#16A34A':'#DC2626') +
+    mkKpi(fmtNum(d.avgPrice.toFixed(1))+' RWF', tr('kpiAvgPrice'),'','var(--ink-soft)');
+
+  // per line table
+  const rows = Object.entries(d.perLine).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const tbody = document.querySelector('#perLineTable tbody');
+  tbody.innerHTML = rows.map(([line,kg])=>`<tr>
+    <td>L${line}</td>
+    <td class="num">${kg.toFixed(1)} kg</td>
+    <td class="num">${fmtRwf(d.perLineName[line]||0)}</td>
+  </tr>`).join('') || `<tr><td colspan="3" style="color:var(--ink-soft);text-align:center;">${tr('noData')}</td></tr>`;
+
+  // multi-gen kpi
+  renderGenKpi();
+}
+
+function renderGenKpi(){
+  const genStats = {};
+  state.stations.forEach(st=>{
+    ['A','B'].forEach(side=>{
+      const gens = getStationGens(st,side);
+      gens.forEach((g,idx)=>{
+        const label='G'+(idx+1);
+        if(!genStats[label]) genStats[label]={total:0,flowered:0,plants:0};
+        genStats[label].total++;
+        genStats[label].plants+=Number(g.count)||0;
+        if(g.floweringDate) genStats[label].flowered++;
+      });
+    });
+  });
+  const keys=Object.keys(genStats).sort();
+  const card=document.getElementById('genKpiCard');
+  if(keys.length<=1){ card.style.display='none'; return; }
+  card.style.display='block';
+  const GEN_COLORS=['#2e7d32','#e65100','#1565c0','#6a1b9a','#880e4f','#00695c'];
+  const GEN_EMOJIS=['🌱','🌿','🍃','🌾','🌳','🎋'];
+  document.getElementById('genKpiGrid').innerHTML = keys.map((label,i)=>{
+    const s=genStats[label];
+    const pct=s.total?Math.round((s.flowered/s.total)*100):0;
+    const color=GEN_COLORS[Math.min(i,5)];
+    const emoji=GEN_EMOJIS[Math.min(i,5)];
+    return `<div class="kpi-card"><div class="kpi-val" style="color:${color};">${fmtNum(s.plants)}</div>
+      <div class="kpi-lbl">${emoji} ${label} · ${tr('genPlants')}</div>
+      <div class="kpi-sub" style="color:${color};font-weight:700;">${pct}% ${tr('genFlowered')}</div></div>`;
+  }).join('');
+}
+
+/* ── LINES ── */
+function renderLinesView(){
+  const query=(document.getElementById('stSearch').value||'').toLowerCase();
+  const lineF=Number(document.getElementById('lineFilter').value||0);
+  const wrap=document.getElementById('linesWrap');
+
+  const lines = lineF ? state.lines.filter(l=>l.number===lineF) : state.lines;
+  const sorted = lines.slice().sort((a,b)=>a.number-b.number);
+
+  if(!sorted.length){ wrap.innerHTML=`<div class="empty-state"><div class="ei">🌿</div><p>${tr('noData')}</p></div>`; return; }
+
+  const today=todayISO(); const todayMs=new Date(today).getTime();
+  wrap.innerHTML = sorted.map(line=>{
+    let stationsHtml='';
+    const lineStations = state.stations.filter(st=>st.line===line.number);
+    const filtered = query ? lineStations.filter(st=>{
+      const code=(st.stationCode||('L'+st.line+'-S'+st.station)).toLowerCase();
+      return code.includes(query);
+    }) : lineStations;
+    const sortedSt = filtered.slice().sort((a,b)=>(a.station||0)-(b.station||0));
+
+    if(!sortedSt.length && query) return '';
+
+    sortedSt.forEach(st=>{
+      const statusA = st.statusA||st.status||'لم تُزهر';
+      const statusB = st.statusB||'لم تُزهر';
+      const fdA = st.floweringDateA||st.floweringDate||'';
+      const fdB = st.floweringDateB||st.floweringDate2||'';
+      const pitClass = s => s==='أزهرت'?'flowered':s==='حُصدت'?'harvested':'notyet';
+      const daysChip = fd => {
+        if(!fd) return '';
+        const ms=new Date(fd).getTime();
+        const expMs=ms+120*86400000;
+        const d=Math.round((expMs-todayMs)/86400000);
+        if(d<0) return `<span class="days-badge" style="color:var(--danger);">${Math.abs(d)}d late</span>`;
+        return `<span class="days-badge">${d}d</span>`;
+      };
+      stationsHtml+=`<div class="st-card">
+        <div class="st-code">${st.stationCode||('L'+st.line+'-S'+st.station)}</div>
+        <div class="pit ${pitClass(statusA)}">A ${daysChip(fdA)}</div>
+        <div class="pit ${pitClass(statusB)}">B ${daysChip(fdB)}</div>
+      </div>`;
+    });
+
+    const total=lineStations.length*2;
+    const fl=lineStations.filter(st=>(st.statusA||st.status||'')=='أزهرت'||(st.statusB||'')=='أزهرت').length;
+    return `<div class="line-block">
+      <div class="line-header">
+        <span class="line-header-left">L${line.number}</span>
+        <span class="line-header-right">${lineStations.length} ${tr('lineStations')} · ${fl} 🌸</span>
+      </div>
+      <div class="stations-grid">${stationsHtml||`<div style="padding:10px;color:var(--ink-soft);font-size:12px;">${tr('noData')}</div>`}</div>
+    </div>`;
+  }).join('');
+  if(!wrap.innerHTML.trim()) wrap.innerHTML=`<div class="empty-state"><div class="ei">🔍</div><p>${tr('noData')}</p></div>`;
+}
+
+/* ── FLOWERING ── */
+function renderFloweringView(){
+  const query=(document.getElementById('flSearch').value||'').toLowerCase();
+  const statusF=document.getElementById('flStatus').value;
+  const today=todayISO(); const todayMs=new Date(today).getTime();
+  const list=document.getElementById('flList');
+
+  // Build from stations
+  const rows=[];
+  state.stations.forEach(st=>{
+    ['A','B'].forEach(side=>{
+      const status = side==='A' ? (st.statusA||st.status||'لم تُزهر') : (st.statusB||'لم تُزهر');
+      const fd = side==='A' ? (st.floweringDateA||st.floweringDate||'') : (st.floweringDateB||st.floweringDate2||'');
+      const code = (st.stationCode||('L'+st.line+'-S'+st.station))+'-'+side;
+      if(query && !code.toLowerCase().includes(query)) return;
+      if(statusF && status!==statusF) return;
+      let daysHtml='';
+      if(fd){
+        const ms=new Date(fd).getTime();
+        const expMs=ms+120*86400000;
+        const d=Math.round((expMs-todayMs)/86400000);
+        const cls=d<0?'urgent':d<=14?'soon':'';
+        daysHtml=d<0
+          ? `<span class="days-chip urgent">${Math.abs(d)} ${tr('daysLeft')} ${tr('overdue')}</span>`
+          : `<span class="days-chip ${cls}">${d} ${tr('daysLeft')}</span>`;
+      }
+      rows.push({code, status, fd, daysHtml});
+    });
+  });
+
+  if(!rows.length){ list.innerHTML=`<div class="empty-state"><div class="ei">🌸</div><p>${tr('noData')}</p></div>`; return; }
+  list.innerHTML = rows.map(r=>`
+    <div class="fl-item">
+      <div class="fl-left">
+        <div class="fl-code">${r.code}</div>
+        <div class="fl-date">${r.fd||'—'}</div>
+      </div>
+      <div class="fl-right">
+        <div class="fl-badge ${r.status==='أزهرت'?'flowered':'harvested'}">${r.status==='أزهرت'?tr('flowered'):r.status==='حُصدت'?tr('harvested'):tr('notyet')}</div>
+        <div style="margin-top:3px;">${r.daysHtml}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── HARVEST ── */
+function renderHarvestView(){
+  const query=(document.getElementById('hvSearch').value||'').toLowerCase();
+  const lineF=Number(document.getElementById('hvLine').value||0);
+  const list=document.getElementById('hvList');
+  let records = state.harvest.slice();
+  if(lineF) records=records.filter(r=>Number(r.line)===lineF);
+  if(query) records=records.filter(r=>{
+    const code=(r.stationCode||('L'+r.line+'-S'+r.station)||'').toLowerCase();
+    const buyer=(r.buyer||'').toLowerCase();
+    return code.includes(query)||buyer.includes(query);
+  });
+  records.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+  if(!records.length){ list.innerHTML=`<div class="empty-state"><div class="ei">🍌</div><p>${tr('noData')}</p></div>`; return; }
+  list.innerHTML = records.map(r=>{
+    const kg=Number(r.weight||0); const price=Number(r.price||0); const total=kg*price;
+    return `<div class="hv-item">
+      <div class="hv-top">
+        <span class="hv-code">${r.stationCode||('L'+r.line+'-S'+r.station)||'—'}</span>
+        <span class="hv-date">${r.date||'—'}</span>
+      </div>
+      <div class="hv-details">
+        <span class="hv-chip">⚖️ ${kg.toFixed(1)} kg</span>
+        ${price?`<span class="hv-chip money">💰 ${fmtNum(price)} RWF/kg</span>`:``}
+        ${total?`<span class="hv-chip money">= ${fmtRwf(total)}</span>`:''}
+        ${r.buyer?`<span class="hv-chip">👤 ${r.buyer}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── EXPENSES ── */
+function renderExpView(){
+  const records = state.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total = records.reduce((s,e)=>s+Number(e.amount||0),0);
+  const avg = records.length ? total/records.length : 0;
+  document.getElementById('expKpiGrid').innerHTML =
+    `<div class="kpi-card"><div class="kpi-val" style="color:var(--danger);">${fmtRwf(total)}</div><div class="kpi-lbl">${tr('totalExpenses')}</div></div>` +
+    `<div class="kpi-card"><div class="kpi-val">${fmtRwf(avg)}</div><div class="kpi-lbl">${tr('avgExpense')}</div></div>` +
+    `<div class="kpi-card"><div class="kpi-val">${fmtNum(records.length)}</div><div class="kpi-lbl">${tr('expCount')}</div></div>`;
+  const list=document.getElementById('expList');
+  if(!records.length){ list.innerHTML=`<div class="empty-state"><div class="ei">📉</div><p>${tr('noData')}</p></div>`; return; }
+  list.innerHTML=records.map(e=>`
+    <div class="log-item">
+      <div>
+        <div class="log-desc">${e.category||e.type||'—'}</div>
+        <div class="log-meta">${e.date||'—'} ${e.description||e.note?'· '+(e.description||e.note):''}</div>
+      </div>
+      <div class="log-amount expense">-${fmtRwf(Number(e.amount||0))}</div>
+    </div>`).join('');
+}
+
+/* ── OPERATIONS ── */
+function renderOpsView(){
+  const query=(document.getElementById('opsSearch').value||'').toLowerCase();
+  let records = state.operations.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(query) records=records.filter(r=>{
+    return [(r.type||''),(r.description||''),(r.worker||''),(r.line||'')].join(' ').toLowerCase().includes(query);
+  });
+  const list=document.getElementById('opsList');
+  if(!records.length){ list.innerHTML=`<div class="empty-state"><div class="ei">🔧</div><p>${tr('noData')}</p></div>`; return; }
+  list.innerHTML=records.map(r=>`
+    <div class="log-item">
+      <div>
+        <div class="log-desc">${r.type||r.category||'—'}</div>
+        <div class="log-meta">${r.date||'—'} ${r.line?'· L'+r.line:''} ${r.worker?'· '+r.worker:''}</div>
+        ${r.description?`<div class="log-meta" style="margin-top:2px;">${r.description}</div>`:''}
+      </div>
+      ${r.cost?`<div class="log-amount expense">-${fmtRwf(Number(r.cost||0))}</div>`:''}
+    </div>`).join('');
+}
+
+/* ── BUYERS ── */
+function renderBuyersView(){
+  const query=(document.getElementById('buySearch').value||'').toLowerCase();
+  const list=document.getElementById('buyersList');
+  let buyers = state.buyers.slice();
+  if(query) buyers=buyers.filter(b=>(b.name||b.company||'').toLowerCase().includes(query)||(b.phone||'').includes(query));
+
+  if(!buyers.length){ list.innerHTML=`<div class="empty-state"><div class="ei">👥</div><p>${tr('noData')}</p></div>`; return; }
+
+  list.innerHTML = buyers.map(b=>{
+    const purchases = state.harvest.filter(r=>r.buyer===b.name||r.buyerId===b.id);
+    const totalKg = purchases.reduce((s,r)=>s+Number(r.weight||0),0);
+    const totalRev = purchases.reduce((s,r)=>s+(Number(r.weight||0)*Number(r.price||0)),0);
+    const paid = state.invoices
+      ? state.invoices.filter(i=>i.buyerId===b.id||i.buyer===b.name).reduce((s,i)=>s+Number(i.amount||0),0) : 0;
+    const balance = totalRev - paid;
+    return `<div class="buyer-item">
+      <div class="buyer-name">${b.name||b.company||'—'}</div>
+      ${b.phone?`<div style="font-size:11.5px;color:var(--ink-soft);">📞 ${b.phone}</div>`:''}
+      <div class="buyer-stats">
+        <div class="buyer-stat">${tr('buyerPurchases')}: <span>${fmtNum(purchases.length)}</span></div>
+        <div class="buyer-stat">${tr('buyerTotal')}: <span>${fmtRwf(totalRev)}</span></div>
+        ${paid?`<div class="buyer-stat">${tr('buyerPaid')}: <span>${fmtRwf(paid)}</span></div>`:''}
+        ${balance?`<div class="buyer-stat">${tr('buyerBalance')}: <span style="color:${balance>0?'var(--danger)':'var(--success)'};">${fmtRwf(balance)}</span></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── FORECAST ── */
+function renderForecastView(){
+  const today=todayISO(); const todayMs=new Date(today).getTime();
+  const candidates=[];
+  state.stations.forEach(st=>{
+    ['A','B'].forEach(side=>{
+      const status = side==='A' ? (st.statusA||st.status||'لم تُزهر') : (st.statusB||'لم تُزهر');
+      if(status==='حُصدت') return;
+      const gens = getStationGens(st,side);
+      gens.forEach((g,gi)=>{
+        if(!g.floweringDate) return;
+        const flMs = new Date(g.floweringDate).getTime();
+        const expMs = flMs + 120*86400000;
+        const daysLeft = Math.round((expMs-todayMs)/86400000);
+        const code = (st.stationCode||('L'+st.line+'-S'+st.station))+'-'+side+(gi>0?' G'+(gi+1):'');
+        candidates.push({ code, floweringDate:g.floweringDate, expectedDate:new Date(expMs).toISOString().slice(0,10), daysLeft, line:st.line });
+      });
+    });
+  });
+  candidates.sort((a,b)=>a.daysLeft-b.daysLeft);
+  const list=document.getElementById('fcList');
+  if(!candidates.length){ list.innerHTML=`<div class="empty-state"><div class="ei">📅</div><p>${tr('noData')}</p></div>`; return; }
+
+  list.innerHTML=candidates.map(c=>{
+    const cls = c.daysLeft<0?'overdue':c.daysLeft<=14?'soon':'coming';
+    const daysTxt = c.daysLeft<0
+      ? `${Math.abs(c.daysLeft)}d ${tr('overdue')}`
+      : `${c.daysLeft} ${tr('daysLeft')}`;
+    const labelTxt = c.daysLeft<0?tr('forecastOverdue'):c.daysLeft<=14?tr('forecastSoon'):tr('forecastComing');
+    return `<div class="fc-item ${cls}">
+      <div class="fc-top">
+        <span class="fc-code">${c.code}</span>
+        <span class="fc-days ${cls}">${daysTxt}</span>
+      </div>
+      <div class="fc-date">${tr('forecastFlowered')} ${c.floweringDate} · ${tr('forecastExpected')}: <strong>${c.expectedDate}</strong></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── INIT ── */
+applyLangLabels();
+</script>
+</body>
+</html>
